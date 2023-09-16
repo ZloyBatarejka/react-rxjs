@@ -1,26 +1,29 @@
-import React from 'react';
-import logo from './logo.svg';
+import React, { useEffect } from 'react';
 import './App.css';
+import { interval, map, scan } from 'rxjs';
+import { TICKER_INTERVAL } from './const';
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+
+const App  = () => {
+  const ticker$ = interval(TICKER_INTERVAL)
+  .pipe(
+    map((): any => ({
+      time: Date.now(),
+      deltaTime: null
+    })),
+    scan((prev, cur): any => ({
+      time: cur.time,
+      deltaTime: cur.time - prev.time
+    }))
+  )
+
+  useEffect(() => {
+    const tickerSub = ticker$.subscribe(console.log)
+
+    return tickerSub.unsubscribe()
+  }, [])
+  
+  return <div className='App'>hello</div>
 }
 
 export default App;
