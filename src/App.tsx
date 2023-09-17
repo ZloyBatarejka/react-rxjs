@@ -1,29 +1,41 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './App.css';
-import { interval, map, scan } from 'rxjs';
-import { TICKER_INTERVAL } from './const';
+import { Subject, map,  debounceTime, distinctUntilChanged, switchMap, Observable} from 'rxjs';
+import {ajax} from 'rxjs/ajax'
+import { IGitHubSearchResult } from './types';
 
+const url = 'https://api.github.com/search/users?per_page=100&q='
+ 
 
 const App  = () => {
-  const ticker$ = interval(TICKER_INTERVAL)
-  .pipe(
-    map((): any => ({
-      time: Date.now(),
-      deltaTime: null
-    })),
-    scan((prev, cur): any => ({
-      time: cur.time,
-      deltaTime: cur.time - prev.time
-    }))
-  )
-
-  useEffect(() => {
-    const tickerSub = ticker$.subscribe(console.log)
-
-    return tickerSub.unsubscribe()
-  }, [])
+  const containerRef = useRef<HTMLDivElement>(null)
+  const subject$ = new Subject<any>()
+  const [avatars, setAvatars] = useState<string[]>([])
   
-  return <div className='App'>hello</div>
+  subject$
+  .pipe(
+    debounceTime(500),
+    map((e: InputEvent) => (e.target as HTMLInputElement).value.trim()),
+    distinctUntilChanged(),
+    switchMap((v: string): Observable<IGitHubSearchResult> => ajax.getJSON(url + v)),
+    map(result => result.items.map(item => item.avatar_url)),
+  )
+  .subscribe(setAvatars)
+
+  
+  useEffect(() => {
+    return () => subject$.unsubscribe()
+  }, [])  
+
+
+  return <div className='App'>
+          <div className='controls'>
+            <input onChange={e => subject$.next(e)}/>
+          </div>
+          <div ref={containerRef} className='container'>
+              {avatars.map(avatar => <img src={avatar} key={avatar}/>)}
+          </div>
+        </div>
 }
 
 export default App;
